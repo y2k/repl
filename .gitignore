@@ -1,0 +1,5 @@
+/.github/bin/
+*.gen.*
+.vscode/
+/.github/bin/
+/.github/Makefile
