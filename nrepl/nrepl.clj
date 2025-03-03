@@ -1,8 +1,6 @@
 (ns _ (:import [java.net ServerSocket Socket]
                [java.nio ByteBuffer]))
 
-(defn foo [^int a ^int b] (+ a b))
-
 (defn- main_loop [eval env_atom ^ServerSocket server]
   (checked!
    (let [^Socket socket (recover (fn [] (.accept server)) (fn [] nil))]
