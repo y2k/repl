@@ -17,5 +17,5 @@
        (.write out data)
        (let [actual (String. (.readAllBytes in))]
          (close_server)
-         (if (not= "4" actual)
+         (if (not= "41" actual)
            (FIXME actual)))))))
