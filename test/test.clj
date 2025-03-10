@@ -21,4 +21,6 @@
            (FIXME actual)))))))
 
 (defn ^void main [^"String[]" _]
-  (assert_ "4" "(\n+\n2\n2\n)"))
+  (assert_ "4" "(\n+\n2\n2\n)")
+  (assert_ "3" "(\ndo*\n(\ndef*\nx\n3\n)\nx\n)")
+  (assert_ "2" "(\ndo*\n(\ndef*\nf\n(\nfn*\n(\nx\n)\nx\n)\n)\n(\nf\n2\n)\n)"))
