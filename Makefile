@@ -6,6 +6,7 @@ test: build
 
 .PHONY: build
 build:
+	@ mkdir -p $(OUT_DIR)
 	@ export OCAMLRUNPARAM=b && \
 		clj2js compile -target repl -src build.clj > .github/Makefile
 	@ $(MAKE) -f .github/Makefile
