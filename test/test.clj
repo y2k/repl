@@ -5,9 +5,10 @@
 
 (defn- assert_ [expected ^String code]
   (checked!
-   (let [close_server (nrepl/main (fn [e l] (i/eval e l)) 8090 (atom (i/make_env {})))
+   (let [port (cast int (+ 10000 (* 10000 (Math/random))))
+         close_server (nrepl/main (fn [e l] (i/eval e l)) port (atom (i/make_env {})))
          socket (Socket.)]
-     (.connect socket (InetSocketAddress. "localhost" 8090) 1000)
+     (.connect socket (InetSocketAddress. "localhost" port) 1000)
      (let [out (.getOutputStream socket)
            in (.getInputStream socket)
            data (.getBytes code)
@@ -18,7 +19,7 @@
        (let [actual (String. (.readAllBytes in))]
          (close_server)
          (if (not= expected actual)
-           (FIXME actual)))))))
+           (FIXME "\nExpected: " expected "\n  Actual: " actual)))))))
 
 (defn ^void main [^"String[]" _]
   (assert_ "4" "(\n+\n2\n2\n)")
