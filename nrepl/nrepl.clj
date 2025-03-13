@@ -1,8 +1,14 @@
 (ns _ (:import [java.net ServerSocket Socket]
                [java.nio ByteBuffer]))
 
+(defn- update_env [eval env_atom code]
+  (let [lexems (vec (.split (cast String code) "\\n"))
+        [result env] (eval (deref env_atom) lexems)]
+    (reset! env_atom env)
+    result))
+
 (defn- main_loop [eval env_atom ^ServerSocket server]
-  (checked!
+  (unchecked!
    (let [^Socket socket (recover (fn [] (.accept server)) (fn [] nil))]
      (if (some? socket)
        (let [in (.getInputStream socket)
@@ -12,10 +18,8 @@
              buffer (ByteBuffer/allocate length)
              _ (.read in (.array buffer) 0 length)
              input_bytes (.array buffer)
-             lexems (vec (.split (String. input_bytes) "\\n"))
-             [result env] (eval (deref env_atom) lexems)
+             result (update_env eval env_atom (String. input_bytes))
              out (.getOutputStream socket)]
-         (reset! env_atom env)
          (.write out (.getBytes (str result)))
          (.flush out)
          (.close out)
@@ -32,3 +36,19 @@
     (fn []
       (.close (as (deref server_socket) ServerSocket))
       nil)))
+
+;; (main eval (cast int (:port config)) env_atom)
+
+(defn main_with_state [state_path eval env_atom config]
+  (let [init_state (slurp state_path)]
+    (if (some? init_state)
+      (update_env eval env_atom init_state))
+    (let [server_socket (atom nil)]
+      (.start
+       (Thread.
+        (fn []
+          (reset! server_socket (ServerSocket. (cast int (:port config))))
+          (main_loop eval env_atom (as (deref server_socket) ServerSocket)))))
+      (fn []
+        (.close (as (deref server_socket) ServerSocket))
+        nil))))
