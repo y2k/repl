@@ -7,7 +7,11 @@
     (reset! env_atom env)
     result))
 
-(defn- main_loop [eval env_atom ^ServerSocket server]
+(defn- update_env_and_save [state_path eval env_atom code]
+  (if (some? state_path) (spit state_path code))
+  (update_env eval env_atom code))
+
+(defn- main_loop [state_path eval env_atom ^ServerSocket server]
   (unchecked!
    (let [^Socket socket (recover (fn [] (.accept server)) (fn [] nil))]
      (if (some? socket)
@@ -18,13 +22,15 @@
              buffer (ByteBuffer/allocate length)
              _ (.read in (.array buffer) 0 length)
              input_bytes (.array buffer)
-             result (update_env eval env_atom (String. input_bytes))
+             result (recover
+                     (fn [] (update_env_and_save state_path eval env_atom (String. input_bytes)))
+                     (fn [e] (str e)))
              out (.getOutputStream socket)]
          (.write out (.getBytes (str result)))
          (.flush out)
          (.close out)
          (.close socket)
-         (main_loop eval env_atom server))))))
+         (main_loop state_path eval env_atom server))))))
 
 (defn main [eval ^int port env_atom]
   (let [server_socket (atom nil)]
@@ -32,7 +38,7 @@
      (Thread.
       (fn []
         (reset! server_socket (ServerSocket. port))
-        (main_loop eval env_atom (as (deref server_socket) ServerSocket)))))
+        (main_loop nil eval env_atom (as (deref server_socket) ServerSocket)))))
     (fn []
       (.close (as (deref server_socket) ServerSocket))
       nil)))
@@ -48,7 +54,7 @@
        (Thread.
         (fn []
           (reset! server_socket (ServerSocket. (cast int (:port config))))
-          (main_loop eval env_atom (as (deref server_socket) ServerSocket)))))
+          (main_loop state_path eval env_atom (as (deref server_socket) ServerSocket)))))
       (fn []
         (.close (as (deref server_socket) ServerSocket))
         nil))))
