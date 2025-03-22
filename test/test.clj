@@ -7,11 +7,12 @@
 (declare test)
 
 (defn ^void main [^"String[]" _]
-  (test "4" "0" "(+ 2 2)")
-  (test "3" "0" "(do (def x 3) x)")
-  (test "3" "(def x 3)" "x")
-  (test "2" "0" "(do (defn f [x] x) (f 2))")
-  (test "2" "(defn f [x] x)" "(f 2)"))
+  (test "5" ["(defn a [x] x)" "(defn b [x] x)"] "(+ (a 2) (b 3))")
+  (test "4" ["0"] "(+ 2 2)")
+  (test "3" ["0"] "(do (def x 3) x)")
+  (test "3" ["(def x 3)"] "x")
+  (test "2" ["0"] "(do (defn f [x] x) (f 2))")
+  (test "2" ["(defn f [x] x)"] "(f 2)"))
 
 ;; Infrastructure for running tests
 
@@ -32,7 +33,7 @@
 (defn- execute_stage [state_path code]
   (let [env_atom (atom (i/make_env {}))
         port (cast int (+ 10000 (* 10000 (Math/random))))
-        close_server (nrepl/main (.toString state_path)
+        close_server (nrepl/main (str state_path)
                                  (fn [e l] (i/eval e l))
                                  env_atom
                                  {:port port})]
@@ -40,18 +41,21 @@
       (close_server)
       actual)))
 
-(defn- compile_to_string [^String code]
+(defn- compile_to_string [code]
   (unchecked!
    (let [p (.start (ProcessBuilder. "clj2js" "compile" "-src" "@stdin" "-target" "bytecode" "-no_lint" "true"))]
-     (.write (.getOutputStream p) (.getBytes code))
+     (.write (.getOutputStream p) (.getBytes (cast String code)))
      (.close (.getOutputStream p))
      (String. (.readAllBytes (.getInputStream p))))))
 
-(defn- test [expected ^String code_before ^String code_after]
+(defn- test [expected codes_before ^String code_after]
   (unchecked!
    (let [state_path (Files/createTempFile "temp_" ".txt")]
      (Files/delete state_path)
-     (execute_stage state_path (compile_to_string code_before))
+     (map
+      (fn [code]
+        (execute_stage state_path (compile_to_string code)))
+      codes_before)
      (let [actual (execute_stage state_path (compile_to_string code_after))]
        (if (not= expected actual)
          (FIXME "\nExpected: " expected "\n  Actual: " actual))))))

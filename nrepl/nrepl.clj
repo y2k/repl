@@ -7,9 +7,10 @@
     (reset! env_atom env)
     result))
 
-(defn- update_env_and_save [state_path eval env_atom code]
+(defn- update_env_and_save [state_path eval env_atom ^String code]
   (let [r (update_env eval env_atom code)]
-    (if (some? state_path) (spit state_path code))
+    (if (some? state_path)
+      (spit state_path (if (.endsWith code "\n") code (str code "\n"))))
     r))
 
 (defn- main_loop [state_path eval env_atom ^ServerSocket server]
@@ -33,12 +34,11 @@
          (.close socket)
          (main_loop state_path eval env_atom server))))))
 
-;; (main eval (cast int (:port config)) env_atom)
-
 (defn main [state_path eval env_atom config]
   (let [init_state (slurp state_path)]
     (if (some? init_state)
-      (update_env eval env_atom init_state))
+      (let [wrapped_state (str "(\ndo*\n" init_state (if (.endsWith init_state "\n") ")" "\n)"))]
+        (update_env eval env_atom wrapped_state)))
     (let [server_socket (atom nil)]
       (.start
        (Thread.
