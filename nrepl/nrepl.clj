@@ -33,20 +33,9 @@
          (.close socket)
          (main_loop state_path eval env_atom server))))))
 
-(defn main [eval ^int port env_atom]
-  (let [server_socket (atom nil)]
-    (.start
-     (Thread.
-      (fn []
-        (reset! server_socket (ServerSocket. port))
-        (main_loop nil eval env_atom (as (deref server_socket) ServerSocket)))))
-    (fn []
-      (.close (as (deref server_socket) ServerSocket))
-      nil)))
-
 ;; (main eval (cast int (:port config)) env_atom)
 
-(defn main_with_state [state_path eval env_atom config]
+(defn main [state_path eval env_atom config]
   (let [init_state (slurp state_path)]
     (if (some? init_state)
       (update_env eval env_atom init_state))

@@ -32,10 +32,10 @@
 (defn- execute_stage [state_path code]
   (let [env_atom (atom (i/make_env {}))
         port (cast int (+ 10000 (* 10000 (Math/random))))
-        close_server (nrepl/main_with_state (.toString state_path)
-                                            (fn [e l] (i/eval e l))
-                                            env_atom
-                                            {:port port})]
+        close_server (nrepl/main (.toString state_path)
+                                 (fn [e l] (i/eval e l))
+                                 env_atom
+                                 {:port port})]
     (let [actual (execute_code port code)]
       (close_server)
       actual)))
