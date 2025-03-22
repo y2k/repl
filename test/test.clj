@@ -4,23 +4,16 @@
     (:require ["../nrepl/nrepl" :as nrepl]
               ["../interpreter/interpreter" :as i]))
 
-(defn- assert_ [expected ^String code]
-  (unchecked!
-   (let [port (cast int (+ 10000 (* 10000 (Math/random))))
-         close_server (nrepl/main (fn [e l] (i/eval e l)) port (atom (i/make_env {})))
-         socket (Socket.)]
-     (.connect socket (InetSocketAddress. "localhost" port) 1000)
-     (let [out (.getOutputStream socket)
-           in (.getInputStream socket)
-           data (.getBytes code)
-           len_buf (ByteBuffer/allocate 4)]
-       (.putInt len_buf (.-length data))
-       (.write out (.array len_buf))
-       (.write out data)
-       (let [actual (String. (.readAllBytes in))]
-         (close_server)
-         (if (not= expected actual)
-           (FIXME "\nExpected: " expected "\n  Actual: " actual)))))))
+(declare test)
+
+(defn ^void main [^"String[]" _]
+  (test "4" "0" "(+ 2 2)")
+  (test "3" "0" "(do (def x 3) x)")
+  (test "3" "(def x 3)" "x")
+  (test "2" "0" "(do (defn f [x] x) (f 2))")
+  (test "2" "(defn f [x] x)" "(f 2)"))
+
+;; Infrastructure for running tests
 
 (defn- execute_code [^int port code]
   (unchecked!
@@ -47,17 +40,18 @@
       (close_server)
       actual)))
 
-(defn- test [expected code_before code_after]
+(defn- compile_to_string [^String code]
+  (unchecked!
+   (let [p (.start (ProcessBuilder. "clj2js" "compile" "-src" "@stdin" "-target" "bytecode" "-no_lint" "true"))]
+     (.write (.getOutputStream p) (.getBytes code))
+     (.close (.getOutputStream p))
+     (String. (.readAllBytes (.getInputStream p))))))
+
+(defn- test [expected ^String code_before ^String code_after]
   (unchecked!
    (let [state_path (Files/createTempFile "temp_" ".txt")]
      (Files/delete state_path)
-     (execute_stage state_path code_before)
-     (let [actual (execute_stage state_path code_after)]
+     (execute_stage state_path (compile_to_string code_before))
+     (let [actual (execute_stage state_path (compile_to_string code_after))]
        (if (not= expected actual)
          (FIXME "\nExpected: " expected "\n  Actual: " actual))))))
-
-(defn ^void main [^"String[]" _]
-  ;; (assert_ "4" "(\n+\n2\n2\n)")
-  ;; (assert_ "3" "(\ndo*\n(\ndef*\nx\n3\n)\nx\n)")
-  ;; (assert_ "2" "(\ndo*\n(\ndef*\nf\n(\nfn*\n(\nx\n)\nx\n)\n)\n(\nf\n2\n)\n)")
-  (test "2" "(\ndef*\nf\n(\nfn*\n(\nx\n)\nx\n)\n)" "(\nf\n2\n)"))

@@ -8,8 +8,9 @@
     result))
 
 (defn- update_env_and_save [state_path eval env_atom code]
-  (if (some? state_path) (spit state_path code))
-  (update_env eval env_atom code))
+  (let [r (update_env eval env_atom code)]
+    (if (some? state_path) (spit state_path code))
+    r))
 
 (defn- main_loop [state_path eval env_atom ^ServerSocket server]
   (unchecked!
