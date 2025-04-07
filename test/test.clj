@@ -10,7 +10,7 @@
   (test "5" ["(defn a [x] x)" "(defn b [x] x)"] "(+ (a 2) (b 3))")
   (test "4" ["0"] "(+ 2 2)")
   (test "3" ["0"] "(do (def x 3) x)")
-  (test "3" ["(def x 3)"] "x")
+  (test "3" ["(def x (+ 1 2))"] "x")
   (test "2" ["0"] "(do (defn f [x] x) (f 2))")
   (test "2" ["(defn f [x] x)"] "(f 2)"))
 
