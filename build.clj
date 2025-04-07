@@ -16,4 +16,4 @@
   (b/vendor
    {:lang "java"
     :target-dir ".github/bin"
-    :items [{:name "interpreter" :version "0.3.0"}]})])
+    :items [{:name "interpreter" :version "0.4.0"}]})])

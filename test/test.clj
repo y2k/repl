@@ -1,16 +1,15 @@
 (ns _ (:import [java.net Socket InetSocketAddress]
-               [java.nio ByteBuffer]
-               [java.nio.file Files])
+               [java.nio ByteBuffer])
     (:require ["../nrepl/nrepl" :as nrepl]
               ["../interpreter/interpreter" :as i]))
 
 (declare test)
 
 (defn ^void main [^"String[]" _]
-  (test "5" ["(defn a [x] x)" "(defn b [x] x)"] "(+ (a 2) (b 3))")
+  (test "5" ["(defn a [x] x)" "(defn b [y] y)"] "(+ (a 2) (b 3))")
   (test "4" ["0"] "(+ 2 2)")
   (test "3" ["0"] "(do (def x 3) x)")
-  (test "3" ["(def x (+ 1 2))"] "x")
+  (test "10" ["(def x (+ (+ 1 2) (+ 3 4)))"] "(do x x)")
   (test "2" ["0"] "(do (defn f [x] x) (f 2))")
   (test "2" ["(defn f [x] x)"] "(f 2)"))
 
@@ -30,11 +29,11 @@
        (let [actual (String. (.readAllBytes in))]
          actual)))))
 
-(defn- execute_stage [state_path code]
+(defn- execute_stage [external code]
   (let [env_atom (atom (i/make_env {}))
         port (cast int (+ 10000 (* 10000 (Math/random))))
-        close_server (nrepl/main (str state_path)
-                                 (fn [e l] (i/eval e l))
+        close_server (nrepl/main {}
+                                 (fn [e l] (i/eval external e l))
                                  env_atom
                                  {:port port})]
     (let [actual (execute_code port code)]
@@ -50,12 +49,22 @@
 
 (defn- test [expected codes_before ^String code_after]
   (unchecked!
-   (let [state_path (Files/createTempFile "temp_" ".txt")]
-     (Files/delete state_path)
+   (let [store_atom (atom {})
+         already_resolved (atom [])
+         external {:interpreter:save (fn [name code]
+                                      ;;  (eprintln (str "[LOG][save] " name "\n" code))
+                                       (swap! store_atom (fn [x] (assoc x name (str code)))))
+                   :interpreter:resolve (fn [name]
+                                          (if (contains? (deref already_resolved) name)
+                                            (FIXME "Already resolved: " name)
+                                            (swap! already_resolved (fn [x] (conj x name))))
+                                          (let [result (get (deref store_atom) name)]
+                                            ;; (eprintln "[LOG][resolve]" name "\n" result)
+                                            result))}]
      (map
       (fn [code]
-        (execute_stage state_path (compile_to_string code)))
+        (execute_stage external (compile_to_string code)))
       codes_before)
-     (let [actual (execute_stage state_path (compile_to_string code_after))]
+     (let [actual (execute_stage external (compile_to_string code_after))]
        (if (not= expected actual)
          (FIXME "\nExpected: " expected "\n  Actual: " actual))))))
