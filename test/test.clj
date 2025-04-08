@@ -32,8 +32,7 @@
 (defn- execute_stage [external code]
   (let [env_atom (atom (i/make_env {}))
         port (cast int (+ 10000 (* 10000 (Math/random))))
-        close_server (nrepl/main {}
-                                 (fn [e l] (i/eval external e l))
+        close_server (nrepl/main (fn [e l] (i/eval external e l))
                                  env_atom
                                  {:port port})]
     (let [actual (execute_code port code)]

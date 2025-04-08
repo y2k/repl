@@ -28,7 +28,7 @@
          (.close socket)
          (main_loop eval env_atom server))))))
 
-(defn main [external eval env_atom config]
+(defn main [eval env_atom config]
   (let [server_socket (atom nil)]
     (.start
      (Thread.
